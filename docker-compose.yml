@@ -1,0 +1,25 @@
+version: '3'
+services:
+  mininet:
+    build:
+      context: ./mininet/
+    image: iwaseyusuke/mininet
+    tty: true
+    network_mode: "bridge"
+    privileged: true
+    environment:
+     - DISPLAY
+    volumes:
+     - /tmp/.X11-unix:/tmp/.X11-unix
+     - /lib/modules:/lib/modules
+  client:
+    build:
+      context: ./client/
+    command: npm start
+    volumes:
+      - ./client/:/usr/app
+      - /usr/app/node_modules
+    
+    ports:
+      - "3000:3000"
+    
