@@ -12,6 +12,9 @@ services:
     volumes:
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
+     - ./mininet/:/mininet/
+    ports:
+      - "8080:8080"
   client:
     build:
       context: ./client/
