@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
  RUN pip install setuptools 
  RUN pip install bottle
-EXPOSE 6633 6653 6640 8080
+
+
+EXPOSE 6633 6653 6640
 
 ENTRYPOINT ["/ENTRYPOINT.sh"]

@@ -8,5 +8,5 @@ net = Mininet(topo=SingleSwitchTopo(k=2),controller=OVSController,link=TCLink)
 
 net.start()
 mininet_rest = MininetRest(net)
-mininet_rest.run()
+mininet_rest.run(host='0.0.0.0', port=8080, debug=True)
 net.stop()
