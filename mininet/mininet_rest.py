@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from bottle import Bottle, request
+from bottle import Bottle, request,response
 import time
 
 """
@@ -16,11 +16,25 @@ __maintainer__ = "Carlos Giraldo"
 __email__ = "carlitosgiraldo@gmail.com"
 __status__ = "Prototype"
 
+class EnableCors(object):
+    def apply(self, fn, context):
+        def _enable_cors(*args, **kwargs):
+            # set CORS headers
+            
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'PUT, GET, POST, DELETE'
+            response.headers['Access-Control-Allow-Headers'] = 'Authorization, Origin, Accept, Content-Type, X-Requested-With'
+
+            if request.method != 'OPTIONS':
+                # actual request; reply with the actual response
+                return fn(*args, **kwargs)
+        return _enable_cors
 
 class MininetRest(Bottle):
     def __init__(self, net):
         super(MininetRest, self).__init__()
         self.net = net
+        
         self.route('/nodes', callback=self.get_nodes)
         self.route('/nodes/<node_name>', callback=self.get_node)
         self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
@@ -30,9 +44,16 @@ class MininetRest(Bottle):
         self.route('/hosts', method='GET', callback=self.get_hosts)
         self.route('/switches', method='GET', callback=self.get_switches)
         self.route('/links', method='GET', callback=self.get_links)
+        self.install(EnableCors())
+        
+        
+
+
 
     def get_nodes(self):
         return {'nodes': [n for n in self.net]}
+
+    
 
     def get_node(self, node_name):
         node = self.net[node_name]
@@ -60,6 +81,7 @@ class MininetRest(Bottle):
             intf.params.update(intf_params)
 
     def get_hosts(self):
+        
         return {'hosts': [h.name for h in self.net.hosts]}
 
     def get_switches(self):

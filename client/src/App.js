@@ -2,6 +2,7 @@ import React from 'react';
 import './App.css';
 import { TrafficMap } from "react-network-diagrams";
 import Panel from './components/Panel'
+import axios from 'axios';
 
 const topology = {
   "description": "Simple topo",
@@ -66,6 +67,10 @@ const edgeColorMap = [
 ];
 
 class App extends React.Component {
+
+  componentDidMount(){
+    axios.get("http://localhost:8080/hosts").then(data => console.log(data))
+  }
 
   render(){
     
