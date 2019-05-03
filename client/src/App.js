@@ -1,8 +1,9 @@
 import React from 'react';
 import './App.css';
 import { TrafficMap } from "react-network-diagrams";
-import Panel from './components/Panel'
+
 import axios from 'axios';
+import { Button, Header,Input, Container, Modal } from 'semantic-ui-react'
 
 
 
@@ -53,6 +54,10 @@ const stylesMap = {
   "esnet_site": siteStyle
 };
 
+const initialSelection= {
+  edges:[],
+  nodes:[]
+}
 
 class App extends React.Component {
 
@@ -61,19 +66,31 @@ class App extends React.Component {
     this.state= {
       topology :  {},
       loading:true,
-      selection : {
-        edges:[],
-        nodes:[]
-      },
-      modal:false
+      selection : initialSelection,
+      modal:false,
+      selected: {}
     }
   }
-  
-  onSelectionChange(s,e){
+  closeModalHandler(){
     this.setState({
-      modal:true
+      modal:false
     })
-    console.log(s,e)
+  }
+  
+  onSelectionChange(element,name){
+      if(element === 'node'){
+        axios.get(`http://localhost:8080/nodes/${name}`)
+        .then(data =>  
+          this.setState({
+            selected:data.data,
+            modal:true
+          })
+        )
+      }
+
+      
+    
+    console.log(element,name)
   }
   componentDidMount(){
     console.log("istek atılıyor")
@@ -88,7 +105,27 @@ class App extends React.Component {
    <div className="App">
    
       <header className="App-header">
-      {!loading ? <div><Panel open={modal} />
+      <Container>
+      {!loading ? <div>
+        { modal ?<Modal open={modal}>
+    <Modal.Header>Node Information</Modal.Header>
+    <Modal.Content >
+     
+      <Modal.Description>
+        <Header>Header</Header>
+        <p>You can update nodes information that you select.</p>
+        <Input placeholder='NAME' value={this.state.selected.name}  />
+        <Input placeholder='IP ADDRESS' value={this.state.selected.params.ip} />
+        <Input placeholder='MAC ADDRESS' />
+        <p>be careful while you're filling</p>
+        <Button.Group>
+    <Button onClick={()=>this.closeModalHandler()}>CLOSE</Button>
+    <Button.Or text='&' />
+    <Button positive>SAVE</Button>
+  </Button.Group>
+      </Modal.Description>
+    </Modal.Content>
+  </Modal> : '' }
         <TrafficMap
             autoSize={false}
             bounds={{x1: 0, y1: 0, x2: 200, y2: 150}}
@@ -96,9 +133,10 @@ class App extends React.Component {
             stylesMap={stylesMap}
             edgeColorMap={edgeColorMap}
             selection={this.state.selection}
-            onSelectionChange={(s,e) => this.onSelectionChange(s,e)}
+            onSelectionChange={(e,n) => this.onSelectionChange(e,n)}
             edgeDrawingMethod="bidirectionalArrow" /> </div>: <div>Creating Network Topology...</div> }
       
+      </Container>
       </header>
     </div>
   );

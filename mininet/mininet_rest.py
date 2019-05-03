@@ -73,7 +73,8 @@ class MininetRest(Bottle):
 
     def get_node(self, node_name):
         node = self.net[node_name]
-        return {'intfs': [i.name for i in node.intfList()], 'params': node.params}
+        
+        return {'intfs': [i.name for i in node.intfList()], 'params': node.params,'name':node_name,}
 
     def post_node(self, node_name):
         node = self.net[node_name]
