@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from bottle import Bottle, request,response
 import time
+from random import randint
 
 """
 MininetRest adds a REST API to mininet.
@@ -44,11 +45,26 @@ class MininetRest(Bottle):
         self.route('/hosts', method='GET', callback=self.get_hosts)
         self.route('/switches', method='GET', callback=self.get_switches)
         self.route('/links', method='GET', callback=self.get_links)
+        self.route('/create-topology',method='GET',callback=self.create_topology)
         self.install(EnableCors())
         
         
 
 
+    def create_topology(self):
+        nodes= [dict(name=h.name,type="esnet_site",x=randint(0, 10)*10,y=randint(0, 10)*10) for h in self.net.hosts]
+        edges = [dict(source=l.intf1.node.name, target=l.intf2.node.name,capacity="10G") for l in self.net.links]
+        switches = [dict(name=s.name,type="esnet_site",x=randint(0, 10)*10,y=randint(0, 10)*10) for s in self.net.switches]
+        for s in switches:
+            nodes.append(s)
+       
+        return  {
+                "description": "Simple topo",
+                "name": "simple",
+                "nodes":  nodes,
+                "edges": edges
+       
+                }
 
     def get_nodes(self):
         return {'nodes': [n for n in self.net]}
