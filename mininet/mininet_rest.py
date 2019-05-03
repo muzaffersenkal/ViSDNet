@@ -54,7 +54,7 @@ class MininetRest(Bottle):
     def create_topology(self):
         nodes= [dict(name=h.name,type="esnet_site",x=randint(0, 10)*10,y=randint(0, 10)*10) for h in self.net.hosts]
         edges = [dict(source=l.intf1.node.name, target=l.intf2.node.name,capacity="10G") for l in self.net.links]
-        switches = [dict(name=s.name,type="esnet_site",x=randint(0, 10)*10,y=randint(0, 10)*10) for s in self.net.switches]
+        switches = [dict(name=s.name,type="hub",x=randint(0, 10)*10,y=randint(0, 10)*10) for s in self.net.switches]
         for s in switches:
             nodes.append(s)
        
