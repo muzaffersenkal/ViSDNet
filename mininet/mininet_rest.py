@@ -2,6 +2,7 @@
 from bottle import Bottle, request,response
 import time
 from random import randint
+import json
 
 """
 MininetRest adds a REST API to mininet.
@@ -38,19 +39,27 @@ class MininetRest(Bottle):
         
         self.route('/nodes', callback=self.get_nodes)
         self.route('/nodes/<node_name>', callback=self.get_node)
+        self.route('/nodes/<node_name>/delete', method='GET', callback=self.delete_node)
         self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
         self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
-        self.route('/nodes/<node_name>/<intf_name>', callback=self.get_intf)
+        self.route('/nodes/<node_name>/<intf_name>', method='GET' ,callback=self.get_intf)
         self.route('/nodes/<node_name>/<intf_name>', method='POST', callback=self.post_intf)
         self.route('/hosts', method='GET', callback=self.get_hosts)
+        self.route('/add-host/<host_name>', method='GET', callback=self.add_host)
         self.route('/switches', method='GET', callback=self.get_switches)
         self.route('/links', method='GET', callback=self.get_links)
         self.route('/create-topology',method='GET',callback=self.create_topology)
         self.install(EnableCors())
         
+    def delete_node(self,node_name):
+     
+        #self.net.delNode(node=node_name)
+        return {}
+
+    def add_host(self,host_name):
+        self.net.addHost(host_name)
+        return {}
         
-
-
     def create_topology(self):
         nodes= [dict(name=h.name,type="esnet_site",x=randint(0, 10)*10,y=randint(0, 10)*10) for h in self.net.hosts]
         edges = [dict(source=l.intf1.node.name, target=l.intf2.node.name,capacity="10G") for l in self.net.links]
@@ -84,8 +93,15 @@ class MininetRest(Bottle):
     def get_intf(self, node_name, intf_name):
         node = self.net[node_name]
         intf = node.nameToIntf[intf_name]
-        return {'name': intf.name, 'status': 'up' if intf.name in intf.cmd('ifconfig') else 'down',
-                "params": intf.params}
+        print("param")
+        print(intf.params['intf'].__dict__)
+        print("------22")
+        print(intf.__dict__)
+        print("------33")
+
+        
+        print(intf.link)
+        return {'name': intf.name, 'ip': intf.ip, 'mac': intf.mac, 'status': 'up' if intf.name in intf.cmd('ifconfig') else 'down',"params": json.dumps({'ss':'sss'})}
 
     def post_intf(self, node_name, intf_name):
         node = self.net[node_name]

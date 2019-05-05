@@ -3,7 +3,11 @@ import './App.css';
 import { TrafficMap } from "react-network-diagrams";
 
 import axios from 'axios';
-import { Button, Header,Input, Container, Modal } from 'semantic-ui-react'
+import { Button, Header,Input, Container, Modal, Menu,
+  Sidebar,
+  Responsive } from 'semantic-ui-react'
+
+  import NavBar from './components/Navbar'
 
 
 
@@ -68,7 +72,8 @@ class App extends React.Component {
       loading:true,
       selection : initialSelection,
       modal:false,
-      selected: {}
+      selected: {},
+      addHost: ''
     }
   }
   closeModalHandler(){
@@ -76,7 +81,20 @@ class App extends React.Component {
       modal:false
     })
   }
-  
+
+  onChange = e =>{
+    const { name , value} = e.target;
+    this.setState({
+        [name]: value
+    })
+};
+  addHost(){
+    let name = this.state.addHost
+    axios.get(`http://localhost:8080/add-host/${name}`)
+    .then(data =>  
+      console.log("eklendi")
+    )
+  }
   onSelectionChange(element,name){
       if(element === 'node'){
         axios.get(`http://localhost:8080/nodes/${name}`)
@@ -101,11 +119,23 @@ class App extends React.Component {
   render(){
     const loading = this.state.loading;
     const {modal} = this.state
+    const leftItems = [
+      { as: "a", content: "Home", key: "home" },
+      { as: "a", content: "About This Project", key: "about" }
+    ];
+    const rightItems = [
+      { as: "a", content: "GitHub Page", key: "github" },
+     
+    ];
   return (
    <div className="App">
+     <header className="App-header">
+      <NavBar leftItems={leftItems} rightItems={rightItems} >
    
-      <header className="App-header">
+   </NavBar>
       <Container>
+      <Input placeholder='host name' size={"small"} name="addHost" onChange={this.onChange} value={this.state.addHost}  />
+      <Button onClick={()=>this.addHost()}>ADD HOST</Button>
       {!loading ? <div>
         { modal ?<Modal open={modal}>
     <Modal.Header>Node Information</Modal.Header>
