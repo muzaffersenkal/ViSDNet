@@ -4,7 +4,7 @@ from mininet.node import OVSController
 from mininet_rest import MininetRest
 from mininet.topo import SingleSwitchTopo
 
-net = Mininet(topo=SingleSwitchTopo(k=2),controller=OVSController,link=TCLink)
+net = Mininet(topo=SingleSwitchTopo(k=5),controller=OVSController,link=TCLink)
 
 net.start()
 mininet_rest = MininetRest(net)

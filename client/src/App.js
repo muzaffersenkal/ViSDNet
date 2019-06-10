@@ -4,8 +4,8 @@ import { TrafficMap } from "react-network-diagrams";
 
 import axios from 'axios';
 import { Button, Header,Input, Container, Modal, Menu,
-  Sidebar,
-  Responsive } from 'semantic-ui-react'
+  Sidebar,Divider,
+  Responsive,Dropdown} from 'semantic-ui-react'
 
   import NavBar from './components/Navbar'
 
@@ -21,6 +21,20 @@ const edgeColorMap = [
   {color: "#3690c0", label: "1 - 2", range: [1, 2]},
   {color: "#74a9cf", label: "0 - 1", range: [0, 1]}
 ];
+
+const IType = [  {
+  key: "TCP",
+  text: "TCP",
+  value: "TCP"
+},
+{
+  key: "UDP",
+  text: "UDP",
+  value: "UDP"
+}]
+
+
+
 const hubStyle = {
   node: {
       normal: {fill: "#10B67F",stroke: "#10B67F",strokeWidth: 24, cursor: "pointer"},
@@ -53,6 +67,7 @@ const siteStyle = {
 };
 
 
+
 const stylesMap = {
   "hub": hubStyle,
   "esnet_site": siteStyle
@@ -72,8 +87,13 @@ class App extends React.Component {
       loading:true,
       selection : initialSelection,
       modal:false,
+      selectedType: "",
       selected: {},
-      addHost: ''
+      addHost: '',
+      selectedClient: '',
+      loadingTest: false,
+      testResult: '',
+      protocol: '',
     }
   }
   closeModalHandler(){
@@ -82,12 +102,52 @@ class App extends React.Component {
     })
   }
 
+  startTest(){
+    this.setState({
+     loadingTest:true
+    }, () => {
+      const server = this.state.selected.name;
+      const client = this.state.selectedClient;
+      const protocol = this.state.protocol;
+      axios.post(`http://localhost:8080/bandwidth/${protocol}/${server}/${client}`)
+      .then(data => {
+        console.log(data)
+        this.setState({
+          testResult:data.data.performance,
+          loadingTest:false})
+         
+         } 
+       
+      )
+
+
+    })
+   
+
+  }
+
   onChange = e =>{
     const { name , value} = e.target;
     this.setState({
         [name]: value
     })
 };
+ 
+  hostListForBandwidth = (name) =>{
+    console.log("test")
+    const hosts = this.state.topology.nodes;
+    const hostsNew = [];
+     hosts.filter( h =>  name !== h.name).forEach(e => {
+        hostsNew.push(  {
+          key: e.name,
+          text: e.name,
+          value: e.name
+        })
+     });
+     console.log(hostsNew);
+
+     return hostsNew;
+  }
   addHost(){
     let name = this.state.addHost
     axios.get(`http://localhost:8080/add-host/${name}`)
@@ -95,15 +155,41 @@ class App extends React.Component {
       console.log("eklendi")
     )
   }
+
+  DropdownSelected = (event, {value}) => {
+    this.setState({
+      selectedClient:value
+      
+    })
+  
+}
+
+protocolSelected = (event, {value}) => {
+  this.setState({
+    protocol:value
+    
+  })
+
+}
   onSelectionChange(element,name){
+    
+    
       if(element === 'node'){
         axios.get(`http://localhost:8080/nodes/${name}`)
         .then(data =>  
           this.setState({
             selected:data.data,
+            selectedType:"node",
             modal:true
           })
         )
+       
+      }else if ( element == 'edge') {
+
+        this.setState({
+          selectedType:"edge",
+          modal:true
+        })
       }
 
       
@@ -118,7 +204,10 @@ class App extends React.Component {
 
   render(){
     const loading = this.state.loading;
-    const {modal} = this.state
+    const {modal} = this.state;
+    const  selectedType = this.state.selectedType;
+    const  testResult = this.state.testResult;
+    const loadingTest = this.state.loadingTest;
     const leftItems = [
       { as: "a", content: "Home", key: "home" },
       { as: "a", content: "About This Project", key: "about" }
@@ -134,27 +223,79 @@ class App extends React.Component {
    
    </NavBar>
       <Container>
-      <Input placeholder='host name' size={"small"} name="addHost" onChange={this.onChange} value={this.state.addHost}  />
-      <Button onClick={()=>this.addHost()}>ADD HOST</Button>
+      {/* <Input placeholder='host name' size={"small"} name="addHost" onChange={this.onChange} value={this.state.addHost}  />
+      <Button onClick={()=>this.addHost()}>ADD HOST</Button> */}
       {!loading ? <div>
         { modal ?<Modal open={modal}>
-    <Modal.Header>Node Information</Modal.Header>
-    <Modal.Content >
+    <Modal.Header>{selectedType == "node" ? "Node" : "Edge" } Information</Modal.Header>
+    <Modal.Content>
      
-      <Modal.Description>
-        <Header>Header</Header>
-        <p>You can update nodes information that you select.</p>
-        <Input placeholder='NAME' value={this.state.selected.name}  />
-        <Input placeholder='IP ADDRESS' value={this.state.selected.params.ip} />
-        <Input placeholder='MAC ADDRESS' />
-        <p>be careful while you're filling</p>
-        <Button.Group>
-    <Button onClick={()=>this.closeModalHandler()}>CLOSE</Button>
-    <Button.Or text='&' />
-    <Button positive>SAVE</Button>
-  </Button.Group>
-      </Modal.Description>
+   
+        
+      { selectedType == "node" ? 
+        <Modal.Description>
+
+
+           <Header>Header</Header>
+           <p>You can update nodes information that you select.</p>
+           {/* ----- Node Modal Content--------- */} 
+           <Divider horizontal>Test Bandwidth</Divider>
+           <Dropdown
+    placeholder='Select a Host'
+    fluid
+    selection
+    onChange={(e,value) => this.DropdownSelected(e,value)}
+    options={this.hostListForBandwidth(this.state.selected.name)}
+  />
+
+<Dropdown
+    placeholder='Select Internet Protocol'
+    fluid
+    selection
+    onChange={(e,value) => this.protocolSelected(e,value)}
+    options={IType}
+  />
+  <br></br>
+   <Button secondary onClick={()=>this.startTest()}>Start Test</Button>
+        { loadingTest ? <div>Test Başladı, biraz zaman alabilir</div>: ''}
+        {testResult !== '' ? testResult :''}
+<Divider horizontal>Info</Divider>
+  
+          <Input placeholder='NAME' value={this.state.selected.name}  />
+          <Input placeholder='IP ADDRESS' value={this.state.selected.params.ip} />
+          <Input placeholder='MAC ADDRESS' />
+          <p>be careful while you're filling</p>
+          <Button.Group>
+            <Button onClick={()=>this.closeModalHandler()}>CLOSE</Button>
+            <Button.Or text='&' />
+            <Button positive>SAVE</Button>
+         </Button.Group> 
+        </Modal.Description>:
+  
+        <Modal.Description>
+
+         {/* ----- Edge Modal Content--------- */} 
+          <Header>Header</Header>
+          <p>You can update nodes information that you select.</p>
+
+
+       
+          <Input placeholder='BANDWIDTH' value={this.state.selected.name}  /> 
+
+         <Button.Group>
+            <Button onClick={()=>this.closeModalHandler()}>CLOSE</Button>
+            <Button.Or text='&' />
+            <Button positive>SAVE</Button>
+          </Button.Group>
+
+
+        </Modal.Description> }
     </Modal.Content>
+
+
+       
+
+
   </Modal> : '' }
         <TrafficMap
             autoSize={false}

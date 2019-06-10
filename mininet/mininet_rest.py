@@ -9,14 +9,7 @@ MininetRest adds a REST API to mininet.
 
 """
 
-__author__ = 'Carlos Giraldo'
-__copyright__ = "Copyright 2015, AtlantTIC - University of Vigo"
-__credits__ = ["Carlos Giraldo"]
-__license__ = "GPL"
-__version__ = "0.0.1"
-__maintainer__ = "Carlos Giraldo"
-__email__ = "carlitosgiraldo@gmail.com"
-__status__ = "Prototype"
+
 
 class EnableCors(object):
     def apply(self, fn, context):
@@ -44,12 +37,20 @@ class MininetRest(Bottle):
         self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
         self.route('/nodes/<node_name>/<intf_name>', method='GET' ,callback=self.get_intf)
         self.route('/nodes/<node_name>/<intf_name>', method='POST', callback=self.post_intf)
+        self.route('/bandwidth/<protocol_name>/<server_name>/<client_name>', method='POST', callback=self.test_bandwidth)
         self.route('/hosts', method='GET', callback=self.get_hosts)
         self.route('/add-host/<host_name>', method='GET', callback=self.add_host)
         self.route('/switches', method='GET', callback=self.get_switches)
         self.route('/links', method='GET', callback=self.get_links)
+        self.route('/links/<link_name>', method='GET', callback=self.get_link)
         self.route('/create-topology',method='GET',callback=self.create_topology)
         self.install(EnableCors())
+
+
+        #METHODS
+
+        #Down Up Link  = configLinkStatus()
+        
         
     def delete_node(self,node_name):
      
@@ -76,32 +77,63 @@ class MininetRest(Bottle):
                 }
 
     def get_nodes(self):
+        
         return {'nodes': [n for n in self.net]}
 
     
 
     def get_node(self, node_name):
         node = self.net[node_name]
-        
+ 
         return {'intfs': [i.name for i in node.intfList()], 'params': node.params,'name':node_name,}
 
     def post_node(self, node_name):
         node = self.net[node_name]
         node.params.update(request.json['params'])
 
+    def test_bandwidth(self,protocol_name,server_name,client_name):
+        nodes= self.net.getNodeByName(server_name, client_name)
+        performance = self.net.iperf(hosts = ( nodes[0],nodes[1]),l4Type=protocol_name,	seconds = 5,port = 5001  )
+
+        return {'performance': performance}
+
+    #duzenlenecek
+    def get_link(self,link_name):
+        links = self.net.links
+        
+        for l in links:
+            if l.intf1.name == link_name or l.intf2.name == link_name:
+                nodes= self.net.getNodeByName(l.intf2.node.name, l.intf1.node.name)
+                print(nodes)
+                performance = self.net.iperf(hosts = ( nodes[0],nodes[1]),l4Type = 'TCP',	seconds = 5,port = 5001  )
+
+
+
+
+        return {'performance': performance}
+
 
     def get_intf(self, node_name, intf_name):
         node = self.net[node_name]
         intf = node.nameToIntf[intf_name]
+        h1, h4 = self.net.getNodeByName('h1', 'h4')
+        intf.config(bw = 30,smooth_change=True)
+        performance = self.net.iperf(hosts = ( h1, h4 ),l4Type = 'TCP',	seconds = 5,port = 5001  )		
+
+        
         print("param")
-        print(intf.params['intf'].__dict__)
+
+        print(intf.link.__dict__)
+        print("test22")
+        #print(intf.params['intf'].__dict__)
+        print(intf.params['intf']['ifconfig'])
         print("------22")
-        print(intf.__dict__)
+       # print(intf.__dict__)
         print("------33")
 
         
         print(intf.link)
-        return {'name': intf.name, 'ip': intf.ip, 'mac': intf.mac, 'status': 'up' if intf.name in intf.cmd('ifconfig') else 'down',"params": json.dumps({'ss':'sss'})}
+        return {'name': intf.name, 'ip': intf.ip, 'mac': intf.mac, 'status': 'up' if intf.name in intf.cmd('ifconfig') else 'down',"params": json.dumps({'ss':performance})}
 
     def post_intf(self, node_name, intf_name):
         node = self.net[node_name]
