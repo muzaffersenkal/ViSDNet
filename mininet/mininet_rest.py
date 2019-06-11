@@ -38,11 +38,15 @@ class MininetRest(Bottle):
         self.route('/nodes/<node_name>/<intf_name>', method='GET' ,callback=self.get_intf)
         self.route('/nodes/<node_name>/<intf_name>', method='POST', callback=self.post_intf)
         self.route('/bandwidth/<protocol_name>/<server_name>/<client_name>', method='POST', callback=self.test_bandwidth)
+        self.route('/latency/<server_name>/<client_name>', method='POST', callback=self.test_latency)
+       
         self.route('/hosts', method='GET', callback=self.get_hosts)
         self.route('/add-host/<host_name>', method='GET', callback=self.add_host)
         self.route('/switches', method='GET', callback=self.get_switches)
         self.route('/links', method='GET', callback=self.get_links)
         self.route('/links/<link_name>', method='GET', callback=self.get_link)
+        self.route('/links/set/<interface_name>/<bandwidth>', method='GET', callback=self.set_bandwidth)
+        self.route('/links/<node1_name>/<node2_name>', method='GET', callback=self.link_info)
         self.route('/create-topology',method='GET',callback=self.create_topology)
         self.install(EnableCors())
 
@@ -51,7 +55,29 @@ class MininetRest(Bottle):
 
         #Down Up Link  = configLinkStatus()
         
+    def set_bandwidth(self,interface_name,bandwidth):
+        for l in self.net.links:
+            if l.intf1.name == interface_name: 
+                intf= l.intf1
+            if l.intf2.name == interface_name:
+                intf=l.intf2
+        intf.config(bw = int(bandwidth),smooth_change=True)
+
+        return {'status':'success'}
+
+    def link_info(self,node1_name,node2_name):
         
+        for l in self.net.links:
+            if (l.intf1.node.name ==node1_name and l.intf2.node.name== node2_name) or (l.intf1.node.name ==node2_name and l.intf2.node.name== node1_name):
+                status = l.status()
+                print(l.__dict__)
+                intf1 = l.intf1
+                intf2 = l.intf2
+                #l.stop()
+
+
+        return { "interfaces":[{"name": intf1.name, "status":intf1.isUp()},{"name": intf2.name, "status":intf2.isUp()}] }
+            
     def delete_node(self,node_name):
      
         #self.net.delNode(node=node_name)
@@ -91,6 +117,35 @@ class MininetRest(Bottle):
         node = self.net[node_name]
         node.params.update(request.json['params'])
 
+    
+    def test_latency(self,server_name,client_name):
+        h1 = self.net.getNodeByName(server_name)
+        h2 = self.net.getNodeByName(client_name)
+
+        h1_ip = h1.IP()
+
+        result = h2.cmd("ping -c 2 %s" % h1_ip)
+
+        print result
+        newResult = result.split('\n')[-2].replace('\r', '')
+        #latency = self.parse_ping(result)
+        #print latency
+        #avg_latency = sum(latency)/len(latency)
+        
+
+        return {'result': newResult}
+
+    def parse_ping(ping):
+
+        latencies = []
+
+        for ln in ping.split('\n'):
+            str = ln.split('time=')
+            if len(str) > 1:
+                str = str[1].split(' ms')[0]
+                latencies.append(float(str))
+
+        return latencies
     def test_bandwidth(self,protocol_name,server_name,client_name):
         nodes= self.net.getNodeByName(server_name, client_name)
         performance = self.net.iperf(hosts = ( nodes[0],nodes[1]),l4Type=protocol_name,	seconds = 5,port = 5001  )

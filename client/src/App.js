@@ -4,7 +4,7 @@ import { TrafficMap } from "react-network-diagrams";
 
 import axios from 'axios';
 import { Button, Header,Input, Container, Modal, Menu,
-  Sidebar,Divider,
+  Sidebar,Divider,Grid,Label,Checkbox,
   Responsive,Dropdown} from 'semantic-ui-react'
 
   import NavBar from './components/Navbar'
@@ -87,6 +87,7 @@ class App extends React.Component {
       loading:true,
       selection : initialSelection,
       modal:false,
+      input:[],
       selectedType: "",
       selected: {},
       addHost: '',
@@ -94,11 +95,23 @@ class App extends React.Component {
       loadingTest: false,
       testResult: '',
       protocol: '',
+      bandwidth:'',
+      
+   
     }
   }
   closeModalHandler(){
     this.setState({
-      modal:false
+      modal:false,     
+      input:[],
+      selectedType: "",
+      selected: {},
+      addHost: '',
+      selectedClient: '',
+      loadingTest: false,
+      testResult: '',
+      protocol: '',
+      bandwidth:'',
     })
   }
 
@@ -114,6 +127,52 @@ class App extends React.Component {
         console.log(data)
         this.setState({
           testResult:data.data.performance,
+          loadingTest:false})
+         
+         } 
+       
+      )
+
+
+    })
+   
+
+  }
+  changeBandwidth(name){
+
+    this.setState({
+      loadingTest:true
+     }, () => {
+      const bandwidth = this.state.bandwidth
+      
+       axios.get(`http://localhost:8080/links/set/${name}/${bandwidth}`)
+       .then(data => {
+         console.log(data)
+         this.setState({
+         
+           loadingTest:false})
+          
+          } 
+        
+       )
+ 
+ 
+     })
+
+  }
+
+  startTestLatency(){
+    this.setState({
+     loadingTest:true
+    }, () => {
+      const server = this.state.selected.name;
+      const client = this.state.selectedClient;
+     
+      axios.post(`http://localhost:8080/latency/${server}/${client}`)
+      .then(data => {
+        console.log(data)
+        this.setState({
+          testResult:data.data.result,
           loadingTest:false})
          
          } 
@@ -171,6 +230,8 @@ protocolSelected = (event, {value}) => {
   })
 
 }
+
+
   onSelectionChange(element,name){
     
     
@@ -185,11 +246,20 @@ protocolSelected = (event, {value}) => {
         )
        
       }else if ( element == 'edge') {
+        let splited = name.split('--')
+        axios.get(`http://localhost:8080/links/${splited[0]}/${splited[1]}`)
+        .then(data =>  {
+          console.log(data)
+          this.setState({
+            selected:data.data.interfaces,
+            selectedType:"edge",
+            modal:true
+          })
+        }
+          
+        )
 
-        this.setState({
-          selectedType:"edge",
-          modal:true
-        })
+        
       }
 
       
@@ -206,6 +276,7 @@ protocolSelected = (event, {value}) => {
     const loading = this.state.loading;
     const {modal} = this.state;
     const  selectedType = this.state.selectedType;
+    const selected = this.state.selected;
     const  testResult = this.state.testResult;
     const loadingTest = this.state.loadingTest;
     const leftItems = [
@@ -237,28 +308,55 @@ protocolSelected = (event, {value}) => {
 
 
            <Header>Header</Header>
-           <p>You can update nodes information that you select.</p>
+           <p>You can update node information that you select.</p>
            {/* ----- Node Modal Content--------- */} 
-           <Divider horizontal>Test Bandwidth</Divider>
-           <Dropdown
-    placeholder='Select a Host'
-    fluid
-    selection
-    onChange={(e,value) => this.DropdownSelected(e,value)}
-    options={this.hostListForBandwidth(this.state.selected.name)}
-  />
 
-<Dropdown
-    placeholder='Select Internet Protocol'
-    fluid
-    selection
-    onChange={(e,value) => this.protocolSelected(e,value)}
-    options={IType}
-  />
-  <br></br>
-   <Button secondary onClick={()=>this.startTest()}>Start Test</Button>
-        { loadingTest ? <div>Test Başladı, biraz zaman alabilir</div>: ''}
-        {testResult !== '' ? testResult :''}
+           <Grid columns={2} divided>
+              <Grid.Row>
+                <Grid.Column>
+                <Divider horizontal>Test Bandwidth</Divider>
+                            <Dropdown
+                      placeholder='Select a Host'
+                      fluid
+                      selection
+                      onChange={(e,value) => this.DropdownSelected(e,value)}
+                      options={this.hostListForBandwidth(this.state.selected.name)}
+                    />
+
+                  <Dropdown
+                      placeholder='Select Internet Protocol'
+                      fluid
+                      selection
+                      onChange={(e,value) => this.protocolSelected(e,value)}
+                      options={IType}
+                    />
+                    <br></br>
+                    <Button secondary onClick={()=>this.startTest()}>Start Test</Button>
+                          
+                </Grid.Column>
+                <Grid.Column>
+                    <Divider horizontal>Test Latency</Divider>
+                    <Dropdown
+                      placeholder='Select a Host'
+                      fluid
+                      selection
+                      onChange={(e,value) => this.DropdownSelected(e,value)}
+                      options={this.hostListForBandwidth(this.state.selected.name)}
+                    />
+                  <br></br>
+                  <Button secondary onClick={()=>this.startTestLatency()}>Start Test</Button>
+                 
+                </Grid.Column>
+        
+              </Grid.Row>
+
+              <Grid.Row>
+              { loadingTest ? <div>Test started, it may take some while...</div>: ''}
+                          {testResult !== '' ? testResult :''}
+              </Grid.Row>
+
+             </Grid>
+     
 <Divider horizontal>Info</Divider>
   
           <Input placeholder='NAME' value={this.state.selected.name}  />
@@ -276,12 +374,36 @@ protocolSelected = (event, {value}) => {
 
          {/* ----- Edge Modal Content--------- */} 
           <Header>Header</Header>
-          <p>You can update nodes information that you select.</p>
+          <p>You can update interfaces information that you select.</p>
 
+          {selected ? selected.map(s => (
+              <Grid.Row key={s.name}>
+                <Divider horizontal> {s.status ?  
+                            <Label as='a' color='teal' tag>
+                  {s.name} Interface is Up
+                </Label>:     <Label as='a' color='red' tag>
+                {s.name} Interface is Down
+                </Label>
+          } </Divider>
 
-       
-          <Input placeholder='BANDWIDTH' value={this.state.selected.name}  /> 
-
+    <p>Change Status :      <Checkbox toggle checked={s.status} onChange={() => this.onChangeStatus(s.name)}/></p> 
+     
+      <p>You can set the bandwith of this interface </p>
+          
+          <Input placeholder='BANDWIDTH' name="bandwidth" onChange={this.onChange}   /> 
+          <Button secondary onClick={()=>this.changeBandwidth(s.name)}>Set</Button>
+          <br></br>
+                          
+          </Grid.Row>
+                
+          )):''}
+         
+         
+      
+         { loadingTest ? <div>It's updating, it may take some while...</div>: ''}
+                          
+        
+          <br></br>
          <Button.Group>
             <Button onClick={()=>this.closeModalHandler()}>CLOSE</Button>
             <Button.Or text='&' />
